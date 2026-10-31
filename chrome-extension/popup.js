@@ -1,6 +1,6 @@
 "use strict";
 const byId = (id) => document.getElementById(id);
-const configFields = ["keyword", "interval", "dry-run"];
+const configFields = ["interval", "dry-run"];
 let tabId = null;
 let busy = false;
 let requesting = false;
@@ -12,11 +12,11 @@ function notice(message) {
 }
 
 function config() {
-  return { keyword: byId("keyword").value.trim(), interval: Number(byId("interval").value), dryRun: byId("dry-run").checked };
+  return { interval: Number(byId("interval").value), dryRun: byId("dry-run").checked };
 }
 
 function preview() {
-  const result = AutoClapCore.evaluate(byId("preview").value, byId("keyword").value);
+  const result = AutoClapCore.evaluate(byId("preview").value);
   byId("preview-result").textContent = `${result.matched ? "✓" : "○"} ${result.reason}`;
   byId("preview-result").classList.toggle("match", result.matched);
 }
@@ -25,17 +25,19 @@ function render(state) {
   lastState = state;
   const context = state.context || {};
   const running = Boolean(state.running);
+  const compatible = state.rulesVersion === AutoClapCore.RULES_VERSION;
   byId("badge").textContent = running ? (state.config?.dryRun ? "● Chạy thử" : "● Theo dõi") : context.ready ? "● Sẵn sàng" : "Chưa kết nối";
   byId("badge").classList.toggle("active", running);
   byId("chat-name").textContent = running ? state.target.name : context.name || "Mở nhóm trên Telegram WebK";
-  byId("connection-note").textContent = context.ready
+  byId("connection-note").textContent = !compatible && context.ready
+    ? "Tab đang dùng bộ lọc cũ. Tải lại Telegram WebK để áp dụng bộ lọc mới có ngoại lệ TH."
+    : context.ready
     ? "Dùng phiên Telegram Web hiện tại · không cần API ID/Hash."
     : context.reason || "Đăng nhập bằng QR rồi mở một nhóm để bắt đầu.";
-  byId("start").disabled = busy || running || !context.ready || !String(context.peer).startsWith("-");
+  byId("start").disabled = busy || running || !compatible || !context.ready || !String(context.peer).startsWith("-");
   byId("stop").disabled = busy || !running;
   for (const id of configFields) byId(id).disabled = busy || running;
   if (running && state.config) {
-    byId("keyword").value = state.config.keyword;
     byId("interval").value = state.config.interval;
     byId("dry-run").checked = state.config.dryRun;
   }
@@ -84,6 +86,10 @@ async function refresh() {
 
 async function control(action) {
   if (busy) return;
+  if (action === "start" && lastState?.rulesVersion !== AutoClapCore.RULES_VERSION) {
+    notice("Tải lại tab Telegram WebK để áp dụng bộ lọc mới, rồi bấm Bắt đầu.");
+    return;
+  }
   busy = true;
   if (lastState) render(lastState);
   notice("");
@@ -108,13 +114,11 @@ byId("start").addEventListener("click", () => control("start"));
 byId("stop").addEventListener("click", () => control("stop"));
 byId("open-telegram").addEventListener("click", () => chrome.tabs.create({ url: "https://web.telegram.org/k/" }));
 byId("preview").addEventListener("input", preview);
-byId("keyword").addEventListener("input", preview);
 
 async function initialize() {
   try {
     const saved = (await chrome.storage.local.get("autoClapSettings")).autoClapSettings;
-    if (saved && typeof saved.keyword === "string") {
-      byId("keyword").value = saved.keyword;
+    if (saved && typeof saved === "object") {
       if (Number.isFinite(saved.interval) && saved.interval >= 0.5 && saved.interval <= 60) byId("interval").value = saved.interval;
       byId("dry-run").checked = Boolean(saved.dryRun);
     }

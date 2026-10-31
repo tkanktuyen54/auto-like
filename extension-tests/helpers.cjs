@@ -36,7 +36,7 @@ function fakeAdapter(shared = {}) {
 
 function message(overrides = {}) {
   return { _: "message", id: 123, mid: 4294967419, peerId: -10, fromId: 22,
-    date: 1000, pFlags: {}, message: "0901234567 HD care gửi ảnh", ...overrides };
+    date: 1000, pFlags: {}, message: "0901234567 TH gửi ảnh", ...overrides };
 }
 
 function fixture(config = {}, adapter = fakeAdapter()) {
@@ -51,7 +51,7 @@ function fixture(config = {}, adapter = fakeAdapter()) {
       await new Promise(setImmediate);
     },
   });
-  monitor.start({ keyword: "care", interval: 1.5, dryRun: false, ...config });
+  monitor.start({ interval: 1.5, dryRun: false, ...config });
   return { monitor, adapter, clock, sleeps };
 }
 

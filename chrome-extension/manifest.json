@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "AutoClap — Telegram Web",
-  "version": "1.0.0",
-  "description": "Tự thả 👏 khi tin mới trong nhóm Telegram Web đang mở có số điện thoại và từ care.",
+  "version": "1.1.0",
+  "description": "Tự thả 👏 cho tin mới có số điện thoại; bỏ qua hai chữ hoa đầu sau số, riêng mã TH vẫn thả.",
   "minimum_chrome_version": "120",
   "permissions": ["storage", "activeTab"],
   "icons": {

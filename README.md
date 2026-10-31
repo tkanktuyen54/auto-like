@@ -6,6 +6,8 @@
 
 Có thêm [Chrome extension](chrome-extension/README.md), dùng phiên Telegram WebK đăng nhập bằng QR, chạy trên Chrome Windows/macOS. Giải nén `dist/AutoClap-Chrome.zip`, vào `chrome://extensions` → Developer mode → Load unpacked rồi chọn thư mục chứa manifest.json. Sau khi tải lại Telegram WebK, mở nhóm và bấm Bắt đầu trong extension. Mỗi tab theo dõi một nhóm; cần giữ tab hoạt động. Đóng gói bằng `python3 scripts/package_extension.py`; chạy bộ test extension bằng `npm ci && npm run test:extension`.
 
+**Chrome 1.1.0:** thả 👏 cho tin mới có số điện thoại, không cần `care`; loại trừ khi hai chữ cái đầu ngay sau số cùng viết hoa (HD/HM/HB…), riêng mã **TH** đứng riêng vẫn được thả. Cần Reload extension và tải lại Telegram WebK sau khi cập nhật. Phần hướng dẫn desktop bên dưới mô tả bộ lọc của bản desktop.
+
 ## Dùng ứng dụng đã đóng gói
 
 - **macOS:** mở `dist/AutoClap.app`, hoặc giải nén `AutoClap-macOS-*.zip` rồi mở ứng dụng bên trong. Có thể kéo vào Applications. Bản build cục bộ chưa ký Developer ID/notarize; nếu Gatekeeper chặn, dùng System Settings → Privacy & Security → Open Anyway cho bản bạn tự build.

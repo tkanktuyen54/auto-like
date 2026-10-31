@@ -31,7 +31,9 @@ async function popup(t, options = {}) {
         try {
           if (request.action === "start") monitor.start(request.config);
           if (request.action === "stop") monitor.stop();
-          return { ok: true, context: adapter.context(), ...monitor.snapshot() };
+          const response = { ok: true, context: adapter.context(), ...monitor.snapshot() };
+          if (options.oldPage) delete response.rulesVersion;
+          return response;
         } catch (error) { return { ok: false, error: error.message }; }
       },
     },
@@ -58,7 +60,7 @@ test("popup Start and Stop control the monitor, and closing popup is independent
   p.document.querySelector("#start").click();
   await tick(); await tick();
   assert.equal(p.monitor.running, true);
-  assert.equal(p.document.querySelector("#keyword").disabled, true);
+  assert.equal(p.document.querySelector("#interval").disabled, true);
   assert.equal(p.document.querySelector("#stop").disabled, false);
   p.adapter.emit(message()); await drain(p.monitor);
   assert.equal(p.monitor.counts.preview, 1);
@@ -66,7 +68,7 @@ test("popup Start and Stop control the monitor, and closing popup is independent
   p.document.querySelector("#stop").click();
   await tick(); await tick();
   assert.equal(p.monitor.running, false);
-  assert.equal(p.document.querySelector("#keyword").disabled, false);
+  assert.equal(p.document.querySelector("#interval").disabled, false);
   assert.equal(p.saved[0].autoClapSettings.dryRun, true);
 });
 
@@ -77,29 +79,43 @@ test("wrong-tab popup explains how to open WebK and cannot start", async (t) => 
   assert.match(p.document.querySelector("#connection-note").textContent, /WebK/);
 });
 
-test("sample preview is local and uses the same phone/keyword rules", async (t) => {
+test("old page code cannot start until Telegram is reloaded with the new TH rules", async (t) => {
+  const p = await popup(t, { oldPage: true });
+  assert.equal(p.document.querySelector("#start").disabled, true);
+  assert.match(p.document.querySelector("#connection-note").textContent, /bộ lọc cũ/);
+  assert.match(p.document.querySelector("#connection-note").textContent, /Tải lại/);
+});
+
+test("sample preview is local and applies uppercase exclusions with the TH exception", async (t) => {
   const p = await popup(t);
   assert.match(p.document.querySelector("#preview-result").textContent, /✓/);
   const before = p.requestCount();
-  p.document.querySelector("#preview").value = "0901234567 healthcare";
+  p.document.querySelector("#preview").value = "0901234567 HD care";
   p.document.querySelector("#preview").dispatchEvent(new p.window.Event("input"));
   assert.match(p.document.querySelector("#preview-result").textContent, /○/);
+  p.document.querySelector("#preview").value = "0901234567 TH zalo";
+  p.document.querySelector("#preview").dispatchEvent(new p.window.Event("input"));
+  assert.match(p.document.querySelector("#preview-result").textContent, /✓/);
   assert.equal(p.requestCount(), before);
 });
 
-test("empty keyword reports a useful error without starting", async (t) => {
+test("popup shows the fixed rules instead of a keyword input", async (t) => {
   const p = await popup(t);
-  p.document.querySelector("#keyword").value = "";
-  p.document.querySelector("#start").click();
-  await tick(); await tick();
-  assert.equal(p.monitor.running, false);
-  assert.match(p.document.querySelector("#notice").textContent, /Từ khóa/);
-  assert.equal(p.document.querySelector("#start").disabled, false);
+  assert.equal(p.document.querySelector("#keyword"), null);
+  assert.match(p.document.body.textContent, /không cần từ khóa/);
+  assert.match(p.document.body.textContent, /Riêng mã TH/);
 });
 
-test("saved keyword and mode are restored", async (t) => {
+test("saved interval and mode survive migration while old keywords are discarded", async (t) => {
   const p = await popup(t, { saved: { keyword: "gửi ảnh", interval: 3, dryRun: true } });
-  assert.equal(p.document.querySelector("#keyword").value, "gửi ảnh");
+  assert.equal(p.document.querySelector("#keyword"), null);
   assert.equal(p.document.querySelector("#interval").value, "3");
   assert.equal(p.document.querySelector("#dry-run").checked, true);
+  p.document.querySelector("#start").click();
+  await tick(); await tick();
+  assert.equal(p.monitor.running, true);
+  assert.equal("keyword" in p.saved[0].autoClapSettings, false);
+  p.adapter.emit(message({ message: "0901234567 zalo" }));
+  await drain(p.monitor);
+  assert.equal(p.monitor.counts.preview, 1);
 });

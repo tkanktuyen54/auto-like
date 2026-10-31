@@ -2,23 +2,27 @@
 (function (root) {
   "use strict";
   if (root.AutoClapCore) return;
+  const RULES_VERSION = 2;
   const separator = "[ .()\\-]*";
   const phonePattern = new RegExp(
     `(?<![\\p{L}\\p{N}_+])(?:0${separator}[35789]|(?:\\+?84|0084)${separator}[35789])` +
       `(?:${separator}[0-9]){8}(?![\\p{L}\\p{N}_])(?!${separator}[0-9])`, "u",
   );
-  const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-  function evaluate(text, keyword = "care") {
+  function evaluate(text) {
     const normalized = String(text || "").normalize("NFC");
-    const word = String(keyword || "").trim().normalize("NFC");
-    if (!word || word.length > 100) return { matched: false, reason: "Nhập từ khóa từ 1 đến 100 ký tự." };
-    const pattern = new RegExp(
-      "(?<![\\p{L}\\p{N}_])" + word.split(/\s+/u).map(escapeRegex).join("\\s+") + "(?![\\p{L}\\p{N}_])", "iu",
-    );
-    if (!pattern.test(normalized)) return { matched: false, reason: `Không có từ khóa “${word}” đứng riêng.` };
-    if (!phonePattern.test(normalized)) return { matched: false, reason: "Chưa có số di động Việt Nam hợp lệ (0… hoặc +84…)." };
-    return { matched: true, reason: "Có số điện thoại và từ khóa. Tin này khớp điều kiện thả 👏." };
+    const phones = [...normalized.matchAll(new RegExp(phonePattern.source, "gu"))];
+    if (!phones.length) return { matched: false, reason: "Chưa có số di động Việt Nam hợp lệ (0… hoặc +84…)." };
+    for (const phone of phones) {
+      // Inspect only the beginning after each phone, allowing whitespace and
+      // punctuation separators. Uppercase later in the text does not exclude it.
+      const afterPhone = normalized.slice(phone.index + phone[0].length).replace(/^[\s\p{P}]+/u, "");
+      const uppercase = /^(\p{Lu}{2})/u.exec(afterPhone);
+      const isTH = /^TH(?![\p{L}\p{N}_])/u.test(afterPhone);
+      if (uppercase && !isTH) {
+        return { matched: false, reason: `Bỏ qua: hai chữ cái đầu sau số là “${uppercase[1]}” viết hoa. Riêng mã TH vẫn được thả 👏.` };
+      }
+    }
+    return { matched: true, reason: "Có số điện thoại và không thuộc diện loại trừ; mã TH cũng được thả 👏." };
   }
 
   function pause(milliseconds, signal) {
@@ -72,6 +76,7 @@
 
     snapshot() {
       return {
+        rulesVersion: RULES_VERSION,
         running: this.running,
         target: this.target || null,
         config: this.config || null,
@@ -99,12 +104,10 @@
       const target = this.adapter.context();
       if (!target.ready) throw new Error(target.reason || "Đăng nhập Telegram WebK và mở nhóm trước.");
       if (!String(target.peer).startsWith("-")) throw new Error("Hãy mở một nhóm hoặc kênh để theo dõi.");
-      const keyword = String(config.keyword || "").trim();
-      if (!keyword || keyword.length > 100) throw new Error("Từ khóa cần từ 1 đến 100 ký tự.");
       const interval = Number(config.interval);
       if (!Number.isFinite(interval) || interval < 0.5 || interval > 60) throw new Error("Khoảng cách xử lý từ 0,5 đến 60 giây.");
       this.target = { account: target.account, peer: target.peer, name: target.name };
-      this.config = { keyword, interval, dryRun: Boolean(config.dryRun) };
+      this.config = { interval, dryRun: Boolean(config.dryRun) };
       this.startedAt = Math.floor(this.now() / 1000);
       this.controller = new AbortController();
       this.counts = emptyCounts();
@@ -132,7 +135,7 @@
         !message.pFlags?.out && !message.out && String(message.fromId) !== this.target.account &&
         Number.isFinite(message.date) && message.date >= this.startedAt &&
         Number.isFinite(Number(message.mid)) && Number(message.mid) > 0 &&
-        evaluate(message.message, this.config.keyword).matched;
+        evaluate(message.message).matched;
     }
 
     enqueue(message) {
@@ -268,7 +271,7 @@
     }
   }
 
-  const api = Object.freeze({ evaluate, pause, Monitor, describeError });
+  const api = Object.freeze({ evaluate, pause, Monitor, describeError, RULES_VERSION });
   root.AutoClapCore = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(globalThis);

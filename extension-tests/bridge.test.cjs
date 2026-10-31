@@ -45,7 +45,7 @@ test("popup-to-content-to-page bridge controls the real queue end to end", async
   assert.equal(initial.ok, true);
   assert.equal(initial.context.name, "Nhóm kiểm thử");
   assert.equal(initial.running, false);
-  const started = await b.control("start", { keyword: "care", interval: 1.5, dryRun: true });
+  const started = await b.control("start", { interval: 1.5, dryRun: true });
   assert.equal(started.running, true);
   b.adapter.emit(message({ date: Math.floor(Date.now() / 1000) }));
   await new Promise(setImmediate);

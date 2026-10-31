@@ -3,6 +3,7 @@
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 import json
+import shutil
 
 
 def main() -> None:
@@ -19,7 +20,10 @@ def main() -> None:
         for file in sorted(directory.rglob("*")):
             if file.is_file() and file.suffix in {".js", ".html", ".css", ".json", ".md", ".png"}:
                 archive.write(file, Path("AutoClap-Chrome") / file.relative_to(directory))
+    versioned = output.with_name(f"AutoClap-Chrome-v{manifest['version']}.zip")
+    shutil.copyfile(output, versioned)
     print(output)
+    print(versioned)
 
 
 if __name__ == "__main__":
