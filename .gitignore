@@ -1,0 +1,15 @@
+.venv/
+.tools/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+*.spec
+*.session*
+settings.json
+history.sqlite*
+.DS_Store
+.pytest_cache/
+artifacts/
+node_modules/

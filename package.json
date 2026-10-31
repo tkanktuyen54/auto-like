@@ -1,0 +1,11 @@
+{
+  "name": "auto-clap-extension-tests",
+  "private": true,
+  "scripts": {
+    "test:extension": "node --test extension-tests/*.test.cjs",
+    "package:extension": "python3 scripts/package_extension.py"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}
